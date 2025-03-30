@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACG-COM</title>
+    <link rel="stylesheet" href="assets/css/output.css">
+    <link rel="shortcut icon" href="assets/images/newlogo.png" type="image/x-icon">
+    <script src="assets/js/jquery.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/assets/js/peer.js"></script>
+</head>
+
+<body class="text-white bg-fixed bg-center bg-cover dark:bg-black font-verdana"
+    style="background-image: url('assets/images/newass.jpg');">
+
+    <header class="fixed top-0 z-50 w-full flex justify-center">
+        <img src="assets/images/newlogo.png" class="object-contain h-10" alt="Logo">
+    </header>
+
+    <section class="flex items-center justify-center w-full h-screen backdrop-blur-sm bg-black/50">
+        <div class="text-center">
+            <p id="waitingConnexion">Connexion au serveur central...</p>
+
+            <div class="mt-4">
+                <button onclick="startCommunication()" id="startCommunication"
+                    class="hidden p-2 px-4 bg-blue-600 rounded-full hover:bg-blue-700 focus:bg-blue-800">
+                    Démarrer
+                </button>
+            </div>
+
+            <div class="flex flex-col items-center mt-4">
+                <video id="myVideo" class="hidden object-cover w-20 h-20 rounded-full shadow-md mt-4" autoplay
+                    playsinline muted></video>
+                <p id="waitingResponse" class="hidden">Attente des données...</p>
+            </div>
+
+            <video id="remoteVideo" class="hidden object-cover w-full p-1 bg-black rounded-lg h-96" autoplay
+                playsinline></video>
+            <audio id="remoteAudio" autoplay></audio>
+        </div>
+    </section>
+
+    <footer class="fixed bottom-0 left-0 w-full bg-white text-neutral-900 text-center p-2">
+        <p>© 2025 ACG-COM - Tous droits réservés</p>
+    </footer>
+
+    <script>
+        const socket = io();
+        let peer = null;
+
+        socket.on('connectedToServer', (data) => {
+            $("#waitingConnexion").html(`<p class='p-2 text-center bg-green-600 rounded-md'>Connexion réussie, Bienvenue ${data}</p>`);
+            $("#startCommunication").fadeIn();
+        });
+
+        socket.on('offer', (data) => {
+            acceptCall(JSON.parse(data));
+        });
+
+        function createPeer(initiator, stream) {
+            const peer = new SimplePeer({
+                initiator,
+                trickle: false,
+                stream
+            });
+
+            peer.on('error', (err) => console.error('Erreur Peer:', err));
+
+            peer.on('signal', (data) => {
+                socket.emit('offer', JSON.stringify(data));
+            });
+
+            peer.on('stream', (remoteStream) => {
+                const video = document.querySelector('#remoteVideo');
+                video.srcObject = remoteStream;
+                $("#remoteVideo").fadeIn();
+                $("#waitingResponse").fadeOut();
+                $("#startCommunication").fadeOut();
+            });
+
+            return peer;
+        }
+
+        function acceptCall(offer) {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                .then((stream) => {
+                    if (!peer) {
+                        peer = createPeer(false, stream);
+                    }
+                    peer.signal(offer);
+                    displayLocalStream(stream);
+                })
+                .catch((err) => console.error('Erreur accès caméra/micro:', err));
+        }
+
+        function startCommunication() {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                .then((stream) => {
+                    peer = createPeer(true, stream);
+                    displayLocalStream(stream);
+                })
+                .catch((err) => console.error('Erreur accès caméra/micro:', err));
+        }
+
+        function displayLocalStream(stream) {
+            const localVideo = document.querySelector('#myVideo');
+            localVideo.srcObject = stream;
+            $("#myVideo").fadeIn();
+            $("#waitingResponse").fadeIn();
+        }
+    </script>
+
+</body>
+
+</html>
