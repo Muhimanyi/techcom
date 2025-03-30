@@ -55,5 +55,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(3000, () => {
-    console.log('Serveur en ligne sur https://localhost:3000');
+    console.log('Serveur en ligne sur le port 3000');
 });
