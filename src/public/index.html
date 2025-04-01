@@ -323,35 +323,97 @@
             socket.on('renceiveaswername', (data) => {
                 $(`#camerausername-${data[0]}`).addClass('fot-semibold').text(data[1]);
             })
+
+
             function displayRemoteStream(stream, userId) {
-                i++;
-                const videoContainer = document.createElement('div');
-                videoContainer.id = `video-${userId}`;
-                videoContainer.className = 'hidden';
+    i++;
+    const videoContainer = document.createElement('div');
+    videoContainer.id = `video-${userId}`;
+    videoContainer.className = 'hidden';
 
-                const video = document.createElement('video');
-                video.srcObject = stream;
-                video.autoplay = true;
-                video.playsInline = true;
-                video.className = 'w-full object-contain';
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.className = 'w-full object-contain';
 
-                videoContainer.appendChild(video);
-                $("#videocontainerFixed").prepend(videoContainer)
-                $("#videocontainerFixed").prepend(`<div id='remote-${userId}' 
-                
-                class="p-5 px-10 text-center bg-white border rounded-lg text-neutral-600">
-                    <p>Camera ${i}: <p id='camerausername-${userId}'>${userId}</p></p>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                        class="w-10 h-10 m-auto">
-                        <path fill-rule="evenodd"
-                            d="M1.371 8.143c5.858-5.857 15.356-5.857 21.213 0a.75.75 0 010 1.061l-.53.53a.75.75 0 01-1.06 0c-4.98-4.979-13.053-4.979-18.032 0a.75.75 0 01-1.06 0l-.53-.53a.75.75 0 010-1.06zm3.182 3.182c4.1-4.1 10.749-4.1 14.85 0a.75.75 0 010 1.061l-.53.53a.75.75 0 01-1.062 0 8.25 8.25 0 00-11.667 0 .75.75 0 01-1.06 0l-.53-.53a.75.75 0 010-1.06zm3.204 3.182a6 6 0 018.486 0 .75.75 0 010 1.061l-.53.53a.75.75 0 01-1.061 0 3.75 3.75 0 00-5.304 0 .75.75 0 01-1.06 0l-.53-.53a.75.75 0 010-1.06zm3.182 3.182a1.5 1.5 0 012.122 0 .75.75 0 010 1.061l-.53.53a.75.75 0 01-1.061 0l-.53-.53a.75.75 0 010-1.06z"
-                            clip-rule="evenodd" />
-                    </svg>
-                </div>`);
+    // Create audio context and analyser
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    analyser.fftSize = 2048;
 
-                socket.emit('askid', userId);
+    // Create canvas for oscilloscope
+    const canvas = document.createElement('canvas');
+    canvas.id = `oscilloscope-${userId}`;
+    canvas.className = 'w-full h-16 bg-black rounded-lg';
+    canvas.width = 300;
+    canvas.height = 64;
 
+    const canvasCtx = canvas.getContext('2d');
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    // Function to draw the oscilloscope
+    function draw() {
+        requestAnimationFrame(draw);
+
+        analyser.getByteTimeDomainData(dataArray);
+
+        canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+        canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+        canvasCtx.lineWidth = 2;
+        canvasCtx.strokeStyle = 'rgb(0, 255, 0)';
+        canvasCtx.beginPath();
+
+        const sliceWidth = canvas.width * 1.0 / bufferLength;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+            const v = dataArray[i] / 128.0;
+            const y = v * canvas.height / 2;
+
+            if (i === 0) {
+                canvasCtx.moveTo(x, y);
+            } else {
+                canvasCtx.lineTo(x, y);
             }
+
+            x += sliceWidth;
+        }
+
+        canvasCtx.lineTo(canvas.width, canvas.height / 2);
+        canvasCtx.stroke();
+    }
+
+    // Start drawing
+    draw();
+
+    videoContainer.appendChild(video);
+    $("#videocontainerFixed").prepend(videoContainer);
+    $("#videocontainerFixed").prepend(`
+        <div id='remote-${userId}' class="p-5 px-10 text-center bg-white border rounded-lg text-neutral-600">
+            <p>Camera ${i}: <p id='camerausername-${userId}'>${userId}</p></p>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                class="w-10 h-10 m-auto">
+                <path fill-rule="evenodd"
+                    d="M1.371 8.143c5.858-5.857 15.356-5.857 21.213 0a.75.75 0 010 1.061l-.53.53a.75.75 0 01-1.06 0c-4.98-4.979-13.053-4.979-18.032 0a.75.75 0 01-1.06 0l-.53-.53a.75.75 0 010-1.06zm3.182 3.182c4.1-4.1 10.749-4.1 14.85 0a.75.75 0 010 1.061l-.53.53a.75.75 0 01-1.062 0 8.25 8.25 0 00-11.667 0 .75.75 0 01-1.06 0l-.53-.53a.75.75 0 010-1.06zm3.204 3.182a6 6 0 018.486 0 .75.75 0 010 1.061l-.53.53a.75.75 0 01-1.061 0 3.75 3.75 0 00-5.304 0 .75.75 0 01-1.06 0l-.53-.53a.75.75 0 010-1.06zm3.182 3.182a1.5 1.5 0 012.122 0 .75.75 0 010 1.061l-.53.53a.75.75 0 01-1.061 0l-.53-.53a.75.75 0 010-1.06z"
+                    clip-rule="evenodd" />
+            </svg>
+            <div class="mt-2">
+                ${canvas.outerHTML}
+            </div>
+        </div>
+    `);
+
+    // Replace the canvas element with the live one
+    const canvasElement = document.querySelector(`#oscilloscope-${userId}`);
+    canvasElement.replaceWith(canvas);
+
+    socket.emit('askid', userId);
+}
 
             function toggleMic() {
                 navigator.mediaDevices.getUserMedia({ video: false, audio: true })
