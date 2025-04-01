@@ -7,6 +7,7 @@ const app = express();
 
 const server = http.createServer(app);
 
+
 const io = socketIo(server);
 app.use(express.static('src/public'));
 
@@ -17,8 +18,6 @@ io.on('connection', (socket) => {
     console.log(`Nouvel utilisateur connecté : ${socket.id}`);
     users[socket.id] = socket.id; // Ajouter l'utilisateur à la liste
 
-    // Informer les autres utilisateurs qu'un nouvel utilisateur s'est connecté
-    socket.broadcast.emit('user-connected', socket.id);
 
     // Envoyer l'ID de connexion au client
     socket.emit('connectedToServer', socket.id);
@@ -47,8 +46,21 @@ io.on('connection', (socket) => {
         delete users[socket.id]; // Supprimer l'utilisateur de la liste
         socket.broadcast.emit('user-disconnected', socket.id); // Informer les autres utilisateurs
     });
+
+
+    socket.on('set-username', (username) => {
+        users[socket.id] = username;
+        socket.broadcast.emit('user-connected', { userId: socket.id, userame: username });
+    });
+
+    socket.on('askid', (id) => {
+        socket.broadcast.emit('receiveaskid', id)
+    });
+    socket.on('answname', (datas) => {
+        socket.broadcast.emit('renceiveaswername', (datas))
+    })
 });
 
 server.listen(3000, () => {
-    console.log('Serveur en ligne sur le port 3000');
+    console.log('Serveur en au port 3000');
 });
