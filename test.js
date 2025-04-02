@@ -57,10 +57,10 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('receiveaskid', id)
     });
     socket.on('answname', (datas) => {
-        socket.broadcast.emit('renceiveaswername', (datas))
+        socket.broadcast.emit('receiveAnswerName', (datas))
     })
 });
 
-server.listen(3000, () => {
-    console.log('Serveur en au port 3000');
+server.listen(9000, () => {
+    console.log('Serveur en au port 9000');
 });
